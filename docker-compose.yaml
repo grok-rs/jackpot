@@ -1,0 +1,105 @@
+services:
+  gateway:
+    build:
+      context: ./
+      dockerfile: gateway/Dockerfile
+    volumes:
+      - ./gateway/src:/app/gateway/src
+      - ./gateway/configuration:/app/configuration
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - APP_ENVIRONMENT=development
+
+  engine:
+    build:
+      context: ./
+      dockerfile: engine/Dockerfile
+    volumes:
+      - ./engine/src:/app/engine/src
+      - ./engine/configuration:/app/configuration
+    ports:
+      - "8081:8081"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENVIRONMENT=development
+
+  storage:
+    build:
+      context: ./
+      dockerfile: storage/Dockerfile
+    volumes:
+      - ./storage/src:/app/storage/src
+      - ./storage/configuration:/app/configuration
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - APP_ENVIRONMENT=development
+
+  # Dependency services
+  rabbitmq:
+    image: rabbitmq:4.1-rc-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  rabbitmq_data:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
