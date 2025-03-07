@@ -1,0 +1,7 @@
+application:
+  port: 8080
+  host: 0.0.0.0
+rabbitmq:
+  uri: "amqp://guest:guest@localhost:5672"
+  exchange_name: "gateway"
+  exchange_type: "direct"
