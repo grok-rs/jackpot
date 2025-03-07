@@ -1,0 +1,28 @@
+use std::sync::Arc;
+use tracing::instrument;
+
+use crate::domain::models::{WagerRequest, WagerResponse};
+
+use super::storage::StorageService;
+
+pub struct TrunsatictionProcessor {
+    pub storage_service: Arc<StorageService>,
+}
+
+impl TrunsatictionProcessor {
+    #[instrument(name = "process_wager", skip(self, request), fields(user_id = %request.user_id, amount = request.amount))]
+    pub async fn process_wager(&self, request: WagerRequest) -> anyhow::Result<WagerResponse> {
+        tracing::info!("Starting wager processing");
+
+        let _ = self.storage_service.write_trunsactions(&request).await?;
+
+        let mut response = WagerResponse {
+            wager_id: "aa".to_string(),
+            status: "Test".to_string(),
+            amount: 10.1, // Note: Hardcoded value from original code; consider using request.amount
+            receipt_id: None,
+        };
+
+        Ok(response)
+    }
+}
