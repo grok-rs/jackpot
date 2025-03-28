@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use lapin::{
-    options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties,
-    ExchangeKind,
+    BasicProperties, Channel, Connection, ConnectionProperties, ExchangeKind, options::*,
+    types::FieldTable,
 };
 
 pub struct RabbitMQPublisher {
@@ -17,7 +17,6 @@ impl RabbitMQPublisher {
 
         let channel = connection.create_channel().await?;
 
-        // Declare the same exchange as gateway
         channel
             .exchange_declare(
                 exchange_name,

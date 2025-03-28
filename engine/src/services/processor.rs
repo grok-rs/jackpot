@@ -1,19 +1,19 @@
-use lapin::{BasicProperties, options::BasicPublishOptions};
+use lapin::{BasicProperties, Channel, options::BasicPublishOptions};
 use std::sync::Arc;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    domain::models::{WagerRequest, WagerResponse},
-    messaging::storage_rpc::StorageRpcClient,
+    domain::models::{ReceiptResponse, WagerRequest, WagerResponse},
+    messaging::rpc_client::RpcClient,
 };
 
 use super::jackpot::JackpotService;
 
 pub struct JackpotProcessor {
     pub jackpot_service: Arc<JackpotService>,
-    pub storage_rpc_client: Arc<StorageRpcClient>,
-    pub storage_channel: Arc<lapin::Channel>,
+    pub storage_rpc_client: Arc<RpcClient<ReceiptResponse>>,
+    pub storage_channel: Arc<Channel>,
 }
 
 impl JackpotProcessor {
@@ -40,13 +40,16 @@ impl JackpotProcessor {
 
         if won {
             tracing::info!("Jackpot won, sending RPC to storage with priority");
-            let receipt_id = self
+            let receipt_response = self
                 .storage_rpc_client
                 .call(&serde_json::to_string(&request)?, Some(10))
                 .await?;
 
-            tracing::info!(receipt_id = receipt_id, "Received receipt ID from storage");
-            response.receipt_id = Some(receipt_id);
+            tracing::info!(
+                receipt_id = receipt_response.receipt_id,
+                "Received receipt ID from storage"
+            );
+            response.receipt_id = Some(receipt_response.receipt_id);
         } else {
             tracing::info!("Jackpot lost, publishing to storage without priority");
             self.storage_channel

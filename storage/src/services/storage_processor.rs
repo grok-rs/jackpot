@@ -14,13 +14,11 @@ impl TrunsatictionProcessor {
     pub async fn process_wager(&self, request: WagerRequest) -> anyhow::Result<WagerResponse> {
         tracing::info!("Starting wager processing");
 
-        let _ = self.storage_service.write_trunsactions(&request).await?;
-
-        let mut response = WagerResponse {
+        let response = WagerResponse {
             wager_id: "aa".to_string(),
             status: "Test".to_string(),
             amount: 10.1, // Note: Hardcoded value from original code; consider using request.amount
-            receipt_id: None,
+            receipt_id: Some("123".to_string()),
         };
 
         Ok(response)

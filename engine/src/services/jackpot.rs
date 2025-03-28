@@ -16,7 +16,8 @@ impl JackpotService {
         &self,
         request: &WagerRequest,
     ) -> anyhow::Result<(bool, f64)> {
-        let won = rand::random::<bool>(); // TODO Replace with certified RNG logic
+        let won = true;
+        // let won = rand::random::<bool>(); // TODO Replace with certified RNG logic
         let new_balance = if won { 0.0 } else { request.amount };
         Ok((won, new_balance))
     }

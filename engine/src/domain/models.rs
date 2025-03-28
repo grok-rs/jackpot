@@ -20,3 +20,8 @@ pub struct WagerResponse {
 
     pub receipt_id: Option<String>,
 }
+
+#[derive(serde::Deserialize)]
+pub struct ReceiptResponse {
+    pub receipt_id: String,
+}

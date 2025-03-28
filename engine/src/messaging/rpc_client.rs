@@ -1,13 +1,13 @@
 use anyhow::anyhow;
 use futures::StreamExt;
 use lapin::{
-    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions},
-    types::{FieldTable, ShortString},
     BasicProperties, Channel,
+    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions},
+    types::FieldTable,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 use std::{collections::HashMap, sync::Arc, time::Duration};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
@@ -44,8 +44,8 @@ where
         })
     }
 
-    #[instrument(name = "rpc.send_request", skip(self, request))]
-    pub async fn call<T: Serialize>(&self, request: &T) -> anyhow::Result<Response> {
+    #[instrument(name = "rpc.send_request", skip(self, message))]
+    pub async fn call(&self, message: &str, priority: Option<u8>) -> anyhow::Result<Response> {
         let correlation_id = Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
 
@@ -54,16 +54,21 @@ where
             .await
             .insert(correlation_id.clone(), tx);
 
-        let payload = serde_json::to_vec(request)?;
+        let mut props = BasicProperties::default()
+            .with_correlation_id(correlation_id.clone().into())
+            .with_reply_to(self.reply_queue.name().into());
+
+        if let Some(p) = priority {
+            props = props.with_priority(p);
+        }
+
         self.channel
             .basic_publish(
                 &self.exchange_name,
                 "",
                 BasicPublishOptions::default(),
-                &payload,
-                BasicProperties::default()
-                    .with_correlation_id(ShortString::from(correlation_id.clone()))
-                    .with_reply_to(ShortString::from(self.reply_queue.name().to_string())),
+                &message.as_bytes(),
+                props,
             )
             .await?
             .await?;

@@ -1,11 +1,12 @@
 use engine::{
     application::Application,
     configuration::get_configuration,
-    messaging::{connection::RabbitConnection, storage_rpc::StorageRpcClient},
+    messaging::{connection::RabbitConnection, rpc_client::RpcClient},
     services::{jackpot::JackpotService, processor::JackpotProcessor},
     telemetry::{get_subscriber, init_subscriber},
     worker::start_worker,
 };
+use lapin::ExchangeKind;
 use secrecy::ExposeSecret;
 use std::{
     fmt::{Debug, Display},
@@ -76,7 +77,8 @@ async fn main() -> anyhow::Result<()> {
     // Set up Storage RPC client
     //
     //
-    let storage_rpc_client = Arc::new(StorageRpcClient::new(&storage_conn, "storage").await?);
+    let storage_rpc_client =
+        Arc::new(RpcClient::new(&storage_conn, "storage", ExchangeKind::Direct).await?);
 
     let processor = Arc::new(JackpotProcessor {
         jackpot_service,

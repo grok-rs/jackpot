@@ -1,8 +1,7 @@
-// src/messaging/consumer.rs
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use lapin::{
-    options::*, types::FieldTable, Connection, ConnectionProperties, Consumer, ExchangeKind,
+    Connection, ConnectionProperties, Consumer, ExchangeKind, options::*, types::FieldTable,
 };
 
 pub struct RabbitMQConsumer {

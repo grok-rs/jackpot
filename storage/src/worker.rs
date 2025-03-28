@@ -8,14 +8,14 @@ use tracing::{error, info, instrument};
 
 use crate::{domain::models::WagerRequest, services::storage_processor::TrunsatictionProcessor};
 
-#[instrument(name = "start_worker", skip(gateway_channel, processor))]
+#[instrument(name = "start_worker", skip(engine_channel, processor))]
 pub async fn start_worker(
-    gateway_channel: lapin::Channel,
+    engine_channel: lapin::Channel,
     processor: Arc<TrunsatictionProcessor>,
 ) -> anyhow::Result<()> {
     info!("Starting worker to consume from storage_queue");
 
-    let mut consumer = gateway_channel
+    let mut consumer = engine_channel
         .basic_consume(
             "storage_queue",
             "storage_consumer",
@@ -34,8 +34,9 @@ pub async fn start_worker(
                 }
             };
 
+            info!("Received request {:?}", request);
             let processor = processor.clone();
-            let gateway_channel = gateway_channel.clone();
+            let engine_channel = engine_channel.clone();
 
             // Spawn an async task with instrumentation
             tokio::spawn(async move {
@@ -47,7 +48,7 @@ pub async fn start_worker(
                         match serde_json::to_vec(&response) {
                             Ok(response_bytes) => {
                                 if let Some(reply_to) = delivery.properties.reply_to() {
-                                    if let Err(e) = gateway_channel
+                                    if let Err(e) = engine_channel
                                         .basic_publish(
                                             "",
                                             reply_to.as_str(),
@@ -65,7 +66,15 @@ pub async fn start_worker(
                                     {
                                         error!("Failed to send response: {:?}", e);
                                     } else {
-                                        info!("Response sent to reply_to queue");
+                                        info!(
+                                            "Response sent to reply_to queue {:?}, correlation_id: {}",
+                                            reply_to.as_str(),
+                                            delivery
+                                                .properties
+                                                .correlation_id()
+                                                .clone()
+                                                .unwrap_or_default()
+                                        );
                                     }
                                 }
                                 if let Err(e) = delivery.ack(BasicAckOptions::default()).await {

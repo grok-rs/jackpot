@@ -1,17 +1,12 @@
-use crate::domain::models::WagerRequest;
-
-pub struct StorageService {
-    repository: String,
-}
+pub struct StorageService {}
 
 impl StorageService {
     pub async fn new() -> anyhow::Result<Self> {
         println!("Creating new StorageService");
-        let repository = "SomeRepository".to_string();
-        Ok(Self { repository })
+        Ok(Self {})
     }
 
-    pub async fn write_trunsactions(&self, request: &WagerRequest) -> anyhow::Result<()> {
+    pub async fn write_trunsactions(&self) -> anyhow::Result<()> {
         Ok(())
     }
 }

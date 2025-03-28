@@ -35,7 +35,7 @@ pub async fn start_worker(
             };
 
             let processor = processor.clone();
-            let gateway_channel = gateway_channel.clone();
+            let gateway_channel_clone = gateway_channel.clone();
 
             // Spawn an async task with instrumentation
             tokio::spawn(async move {
@@ -47,7 +47,7 @@ pub async fn start_worker(
                         match serde_json::to_vec(&response) {
                             Ok(response_bytes) => {
                                 if let Some(reply_to) = delivery.properties.reply_to() {
-                                    if let Err(e) = gateway_channel
+                                    if let Err(e) = gateway_channel_clone
                                         .basic_publish(
                                             "",
                                             reply_to.as_str(),
