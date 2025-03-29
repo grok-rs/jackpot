@@ -1,5 +1,6 @@
 use futures::StreamExt;
 use lapin::{
+    Channel,
     options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions},
     types::FieldTable,
 };
@@ -10,7 +11,7 @@ use crate::{domain::models::WagerRequest, services::processor::JackpotProcessor}
 
 #[instrument(name = "start_worker", skip(gateway_channel, processor))]
 pub async fn start_worker(
-    gateway_channel: lapin::Channel,
+    gateway_channel: Channel,
     processor: Arc<JackpotProcessor>,
 ) -> anyhow::Result<()> {
     info!("Starting worker to consume from gateway_queue");

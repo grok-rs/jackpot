@@ -15,10 +15,9 @@ impl JackpotService {
     pub async fn update_balance_and_check_win(
         &self,
         request: &WagerRequest,
-    ) -> anyhow::Result<(bool, f64)> {
-        let won = true;
-        // let won = rand::random::<bool>(); // TODO Replace with certified RNG logic
-        let new_balance = if won { 0.0 } else { request.amount };
+    ) -> anyhow::Result<(bool, u64)> {
+        let won = rand::random::<bool>(); // TODO Replace with certified RNG logic
+        let new_balance = if won { 0 } else { request.amount };
         Ok((won, new_balance))
     }
 }

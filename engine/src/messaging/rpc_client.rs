@@ -1,8 +1,11 @@
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use futures::StreamExt;
 use lapin::{
     BasicProperties, Channel,
-    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions},
+    options::{
+        BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, ExchangeDeclareOptions,
+        QueueDeclareOptions,
+    },
     types::FieldTable,
 };
 use serde::de::DeserializeOwned;
@@ -11,12 +14,12 @@ use tokio::sync::{Mutex, oneshot};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use super::{connection::RabbitConnection, exchange::ExchangeManager, reply_queue::ReplyQueue};
+use super::connection::RabbitConnection;
 
 pub struct RpcClient<Response> {
     channel: Arc<Channel>,
     exchange_name: String,
-    reply_queue: ReplyQueue,
+    reply_queue_name: String,
     pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender<Response>>>>,
 }
 
@@ -30,16 +33,43 @@ where
         exchange_kind: lapin::ExchangeKind,
     ) -> anyhow::Result<Self> {
         let channel = Arc::new(connection.create_channel().await?);
-        ExchangeManager::declare(Arc::clone(&channel), exchange_name, exchange_kind).await?;
-        let reply_queue = ReplyQueue::new(Arc::clone(&channel)).await?;
+
+        // Declare the exchange
+        channel
+            .exchange_declare(
+                exchange_name,
+                exchange_kind,
+                ExchangeDeclareOptions::default(),
+                FieldTable::default(),
+            )
+            .await
+            .context("Failed to declare exchange")?;
+
+        // Declare the reply queue directly
+        let queue = channel
+            .queue_declare(
+                "",
+                QueueDeclareOptions {
+                    exclusive: true,
+                    ..Default::default()
+                },
+                FieldTable::default(),
+            )
+            .await
+            .context("Failed to create reply queue")?;
+        let reply_queue_name = queue.name().as_str().to_string();
 
         let pending_requests = Arc::new(Mutex::new(HashMap::new()));
-        Self::spawn_reply_consumer(Arc::clone(&channel), &reply_queue, pending_requests.clone());
+        Self::spawn_reply_consumer(
+            Arc::clone(&channel),
+            &reply_queue_name,
+            pending_requests.clone(),
+        );
 
         Ok(Self {
             channel,
             exchange_name: exchange_name.to_string(),
-            reply_queue,
+            reply_queue_name,
             pending_requests,
         })
     }
@@ -56,7 +86,7 @@ where
 
         let mut props = BasicProperties::default()
             .with_correlation_id(correlation_id.clone().into())
-            .with_reply_to(self.reply_queue.name().into());
+            .with_reply_to(self.reply_queue_name.clone().into());
 
         if let Some(p) = priority {
             props = props.with_priority(p);
@@ -82,10 +112,10 @@ where
 
     fn spawn_reply_consumer(
         channel: Arc<Channel>,
-        reply_queue: &ReplyQueue,
+        reply_queue_name: &str,
         pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender<Response>>>>,
     ) {
-        let queue_name = reply_queue.name().to_string();
+        let queue_name = reply_queue_name.to_string();
         tokio::spawn(async move {
             let mut consumer = match channel
                 .basic_consume(

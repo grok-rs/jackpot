@@ -1052,7 +1052,6 @@ dependencies = [
 name = "engine"
 version = "0.1.0"
 dependencies = [
- "actix-web",
  "anyhow",
  "config",
  "env_logger",
@@ -1067,7 +1066,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-actix-web",
  "tracing-bunyan-formatter",
  "tracing-log 0.2.0",
  "tracing-subscriber",
@@ -2464,9 +2462,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.29.1"
+version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8034fb926579ff49d3fe58d288d5dcb580bf11e9bccd33224b45adebf0fd0c23"
+checksum = "b110459d6e323b7cda23980c46c77157601199c9da6241552b284cd565a7a133"
 dependencies = [
  "arc-swap",
  "backon",
@@ -3149,7 +3147,6 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 name = "storage"
 version = "0.1.0"
 dependencies = [
- "actix-web",
  "anyhow",
  "config",
  "dotenvy",
@@ -3163,7 +3160,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-actix-web",
  "tracing-bunyan-formatter",
  "tracing-log 0.2.0",
  "tracing-subscriber",

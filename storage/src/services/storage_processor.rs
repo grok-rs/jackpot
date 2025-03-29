@@ -17,7 +17,7 @@ impl TrunsatictionProcessor {
         let response = WagerResponse {
             wager_id: "aa".to_string(),
             status: "Test".to_string(),
-            amount: 10.1, // Note: Hardcoded value from original code; consider using request.amount
+            amount: 10, // Note: Hardcoded value from original code; consider using request.amount
             receipt_id: Some("123".to_string()),
         };
 

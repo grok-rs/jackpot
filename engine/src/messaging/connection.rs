@@ -1,5 +1,5 @@
 use anyhow::Context;
-use lapin::{Connection, ConnectionProperties};
+use lapin::{Channel, Connection, ConnectionProperties};
 use secrecy::{ExposeSecret, SecretString};
 
 pub struct RabbitConnection {
@@ -17,7 +17,7 @@ impl RabbitConnection {
         Ok(Self { connection })
     }
 
-    pub async fn create_channel(&self) -> anyhow::Result<lapin::Channel> {
+    pub async fn create_channel(&self) -> anyhow::Result<Channel> {
         self.connection
             .create_channel()
             .await

@@ -8,13 +8,12 @@ name = "engine"
 path = "src/main.rs"
 
 [dependencies]
-actix-web = { workspace = true }
 anyhow = { workspace = true }
 config = { workspace = true }
 env_logger = { workspace = true }
 futures = { workspace = true }
 lapin = { workspace = true }
-redis = { version = "0.29.1", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.29.2", features = ["tokio-comp", "connection-manager"] }
 secrecy = { workspace = true }
 serde = { workspace = true }
 serde-aux = { workspace = true }
@@ -22,7 +21,6 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing = { workspace = true }
-tracing-actix-web = { workspace = true }
 tracing-bunyan-formatter = { workspace = true }
 tracing-log = { workspace = true }
 tracing-subscriber = { workspace = true }

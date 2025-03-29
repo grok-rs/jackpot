@@ -1,10 +1,11 @@
 use engine::{
-    application::Application,
     configuration::get_configuration,
-    messaging::{connection::RabbitConnection, rpc_client::RpcClient},
+    messaging::{
+        connection::RabbitConnection, consumer_client::ConsumerClient,
+        publish_client::PublishClient, rpc_client::RpcClient,
+    },
     services::{jackpot::JackpotService, processor::JackpotProcessor},
     telemetry::{get_subscriber, init_subscriber},
-    worker::start_worker,
 };
 use lapin::ExchangeKind;
 use secrecy::ExposeSecret;
@@ -20,76 +21,40 @@ async fn main() -> anyhow::Result<()> {
     init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
-    let application = Application::build(configuration.clone()).await?;
-    let application_task = tokio::spawn(application.run_until_stopped());
 
     let jackpot_service =
         Arc::new(JackpotService::new(&configuration.redis.uri.expose_secret()).await?);
 
     // Set up RabbitMQ connections
-    let gateway_conn = RabbitConnection::new(&configuration.rabbitmq.gateway_url).await?;
-    let storage_conn = RabbitConnection::new(&configuration.rabbitmq.storage_url).await?;
-
-    // Create channels
-    let gateway_channel = gateway_conn.create_channel().await?;
-    let storage_channel = Arc::new(storage_conn.create_channel().await?);
-
-    // Declare the "gateway" exchange (direct type, matching Gateway's configuration)
-    gateway_channel
-        .exchange_declare(
-            "gateway",
-            lapin::ExchangeKind::Direct,
-            lapin::options::ExchangeDeclareOptions::default(),
-            lapin::types::FieldTable::default(),
-        )
-        .await?;
-
-    // Declare the queue for Engine to consume from
-    gateway_channel
-        .queue_declare(
-            "gateway_queue",
-            lapin::options::QueueDeclareOptions::default(),
-            lapin::types::FieldTable::default(),
-        )
-        .await?;
-
-    // Bind the queue to the "gateway" exchange with routing key ""
-    gateway_channel
-        .queue_bind(
-            "gateway_queue",
-            "gateway",
-            "", // Matches Gateway's publishing routing key
-            lapin::options::QueueBindOptions::default(),
-            lapin::types::FieldTable::default(),
-        )
-        .await?;
-
-    // Declare the "storage_exchange" for communicating with Storage
-    storage_channel
-        .exchange_declare(
-            "storage",
-            lapin::ExchangeKind::Direct,
-            lapin::options::ExchangeDeclareOptions::default(),
-            lapin::types::FieldTable::default(),
-        )
-        .await?;
+    let gateway_connection = RabbitConnection::new(&configuration.rabbitmq.gateway_url).await?;
+    let storage_connection = RabbitConnection::new(&configuration.rabbitmq.storage_url).await?;
 
     // Set up Storage RPC client
-    //
-    //
     let storage_rpc_client =
-        Arc::new(RpcClient::new(&storage_conn, "storage", ExchangeKind::Direct).await?);
+        Arc::new(RpcClient::new(&storage_connection, "storage", ExchangeKind::Direct).await?);
+
+    let publish_client =
+        Arc::new(PublishClient::new(&storage_connection, "storage", ExchangeKind::Direct).await?);
 
     let processor = Arc::new(JackpotProcessor {
         jackpot_service,
         storage_rpc_client,
-        storage_channel,
+        publish_client,
     });
 
-    let gateway_consumer = tokio::spawn(start_worker(gateway_channel, processor));
+    let consumer_client = ConsumerClient::new(
+        &gateway_connection,
+        "gateway",
+        ExchangeKind::Direct,
+        "gateway_queue",
+        "",
+        processor.clone(),
+    )
+    .await?;
+
+    let gateway_consumer = tokio::spawn(async move { consumer_client.start_consuming().await });
 
     tokio::select! {
-        o = application_task => report_exit("API", o),
         o = gateway_consumer => report_exit("Gateway Consumer", o),
     }
 
