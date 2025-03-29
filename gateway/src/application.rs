@@ -6,7 +6,7 @@ use crate::{
     messaging::{connection::RabbitConnection, rpc_client::RpcClient},
     routes,
 };
-use actix_web::{web::Data, App, HttpServer};
+use actix_web::{App, HttpServer, web::Data};
 
 use actix_web::dev::Server;
 use lapin::ExchangeKind;
@@ -53,16 +53,13 @@ async fn run(
     let base_url = Data::new(ApplicationBaseUrl(base_url));
 
     let conn = RabbitConnection::new(&rabbitmq_config.uri).await?;
-    let exchange_kind = match rabbitmq_config.exchange_type.as_str() {
-        "fanout" => ExchangeKind::Fanout,
-        "direct" => ExchangeKind::Direct,
-        "topic" => ExchangeKind::Topic,
-        _ => anyhow::bail!("Invalid exchange type"),
-    };
 
-    let rpc_client =
-        RpcClient::<WagerResponse>::new(&conn, &rabbitmq_config.exchange_name, exchange_kind)
-            .await?;
+    let rpc_client = RpcClient::<WagerResponse>::new(
+        &conn,
+        &rabbitmq_config.exchange_name,
+        ExchangeKind::Direct,
+    )
+    .await?;
     let rpc_client = Data::new(rpc_client);
 
     let server = HttpServer::new(move || {

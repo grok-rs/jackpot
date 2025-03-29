@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WagerRequest {
+    pub id: Option<Uuid>,
     pub amount: u64,
     pub site_id: i32,
     pub user_id: i32,

@@ -1,7 +1,8 @@
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use std::convert::{TryFrom, TryInto};
+use url::Url;
 
 #[derive(Clone, Deserialize)]
 pub struct Settings {
@@ -30,6 +31,36 @@ pub struct PostgresSettings {
     pub password: SecretString,
     pub database_name: String,
     pub schema_name: String,
+}
+
+impl PostgresSettings {
+    /// Builds a PostgreSQL connection URL from the settings.
+    ///
+    /// The URL follows the format: `postgres://username:password@host:port/database_name`.
+    /// Special characters in the username and password are automatically percent-encoded.
+    ///
+    /// # Returns
+    ///
+    /// A `String` representing the connection URL.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the base URL cannot be parsed or if setting the username/password fails,
+    /// which should not occur with valid field values.
+    pub fn build_url(&self) -> String {
+        let mut url = Url::parse(&format!(
+            "postgres://{}:{}/{}",
+            self.host, self.port, self.database_name
+        ))
+        .expect("Failed to parse base URL");
+
+        url.set_username(self.username.expose_secret())
+            .expect("Failed to set username");
+        url.set_password(Some(self.password.expose_secret()))
+            .expect("Failed to set password");
+
+        url.as_str().to_string()
+    }
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {

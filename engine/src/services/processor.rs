@@ -24,6 +24,7 @@ impl JackpotProcessor {
             .jackpot_service
             .update_balance_and_check_win(&request)
             .await?;
+
         tracing::info!(
             won = won,
             new_balance = new_balance,

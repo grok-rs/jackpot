@@ -1,23 +1,25 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use futures::StreamExt;
 use lapin::{
-    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions},
-    types::{FieldTable, ShortString},
     BasicProperties, Channel, ExchangeKind,
+    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions},
+    types::{FieldTable, ShortString},
 };
-use serde::{de::DeserializeOwned, Serialize};
-use tokio::sync::{oneshot, Mutex};
+use serde::de::DeserializeOwned;
+use tokio::sync::{Mutex, oneshot};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use super::{connection::RabbitConnection, exchange::ExchangeManager, reply_queue::ReplyQueue};
+use crate::domain::models::WagerRequest;
+
+use super::connection::RabbitConnection;
 
 pub struct RpcClient<Response> {
     channel: Arc<Channel>,
     exchange_name: String,
-    reply_queue: ReplyQueue,
+    reply_queue_name: String,
     pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender<Response>>>>,
 }
 
@@ -32,22 +34,47 @@ where
     ) -> anyhow::Result<Self> {
         let channel = Arc::new(connection.create_channel().await?);
 
-        ExchangeManager::declare(Arc::clone(&channel), exchange_name, exchange_kind).await?;
-        let reply_queue = ReplyQueue::new(Arc::clone(&channel)).await?;
+        // Declare the exchange directly (migrated from ExchangeManager)
+        channel
+            .exchange_declare(
+                exchange_name,
+                exchange_kind,
+                lapin::options::ExchangeDeclareOptions::default(),
+                FieldTable::default(),
+            )
+            .await
+            .context("Failed to declare exchange")?;
+
+        // Declare the reply queue directly
+        let queue = channel
+            .queue_declare(
+                "",
+                QueueDeclareOptions {
+                    exclusive: true,
+                    ..Default::default()
+                },
+                FieldTable::default(),
+            )
+            .await
+            .context("Failed to create reply queue")?;
+        let reply_queue_name = queue.name().as_str().to_string();
 
         let pending_requests = Arc::new(Mutex::new(HashMap::new()));
-        Self::spawn_reply_consumer(Arc::clone(&channel), &reply_queue, pending_requests.clone());
 
-        Ok(Self {
+        let client = Self {
             channel,
             exchange_name: exchange_name.to_string(),
-            reply_queue,
+            reply_queue_name,
             pending_requests,
-        })
+        };
+
+        client.spawn_reply_consumer();
+
+        Ok(client)
     }
 
     #[instrument(name = "rpc.send_request", skip(self, request))]
-    pub async fn call<T: Serialize>(&self, request: &T) -> anyhow::Result<Response> {
+    pub async fn call(&self, request: &WagerRequest) -> anyhow::Result<Response> {
         let correlation_id = Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
 
@@ -57,7 +84,7 @@ where
             .await
             .insert(correlation_id.clone(), tx);
 
-        let payload = serde_json::to_vec(request)?;
+        let payload = serde_json::to_vec(&request)?;
         self.channel
             .basic_publish(
                 &self.exchange_name,
@@ -66,7 +93,7 @@ where
                 &payload,
                 BasicProperties::default()
                     .with_correlation_id(ShortString::from(correlation_id.clone()))
-                    .with_reply_to(ShortString::from(self.reply_queue.name().to_string())),
+                    .with_reply_to(ShortString::from(self.reply_queue_name.clone())),
             )
             .await?
             .await?;
@@ -78,12 +105,10 @@ where
         }
     }
 
-    fn spawn_reply_consumer(
-        channel: Arc<Channel>,
-        reply_queue: &ReplyQueue,
-        pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender<Response>>>>,
-    ) {
-        let queue_name = reply_queue.name().to_string();
+    fn spawn_reply_consumer(&self) {
+        let channel = self.channel.clone();
+        let queue_name = self.reply_queue_name.clone();
+        let pending_requests = self.pending_requests.clone();
         tokio::spawn(async move {
             let mut consumer = match channel
                 .basic_consume(

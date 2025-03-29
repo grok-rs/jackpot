@@ -21,7 +21,6 @@ pub struct ApplicationConfig {
 pub struct RabbitMqConfig {
     pub uri: SecretString,
     pub exchange_name: String,
-    pub exchange_type: String,
 }
 
 pub fn get_configuration() -> Result<Config, config::ConfigError> {

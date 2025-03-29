@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct WagerRequest {
-    pub amount: u64,
-    pub site_id: u32,
-    pub user_id: u32,
-    pub game_id: u32,
+pub struct Wager {
+    pub id: Uuid,
+    pub amount: f64,
+    pub site_id: i32,
+    pub user_id: i32,
+    pub game_id: i32,
 
     pub cheat_code: Option<String>,
 }
@@ -14,7 +16,7 @@ pub struct WagerRequest {
 pub struct WagerResponse {
     pub wager_id: String,
     pub status: String,
-    pub amount: u64,
+    pub amount: f64,
 
     pub receipt_id: Option<String>,
 }

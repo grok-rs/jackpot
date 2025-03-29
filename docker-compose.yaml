@@ -7,7 +7,7 @@ services:
       - ./gateway/src:/app/gateway/src
       - ./gateway/configuration:/app/configuration
     ports:
-      - "8080:8080"
+      - "8083:8080"
     depends_on:
       rabbitmq:
         condition: service_healthy

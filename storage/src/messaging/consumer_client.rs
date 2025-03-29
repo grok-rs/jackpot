@@ -13,7 +13,7 @@ use std::sync::Arc;
 use tracing::{error, info};
 
 use super::connection::RabbitConnection;
-use crate::domain::models::WagerRequest;
+use crate::domain::models::Wager;
 use crate::services::storage_processor::TrunsatictionProcessor;
 
 pub struct ConsumerClient {
@@ -104,7 +104,7 @@ impl ConsumerClient {
     async fn process_delivery(&self, delivery: Delivery) {
         info!("Processing delivery");
 
-        let request: WagerRequest = match serde_json::from_slice(&delivery.data) {
+        let request: Wager = match serde_json::from_slice(&delivery.data) {
             Ok(req) => req,
             Err(e) => {
                 error!("Failed to deserialize request: {:?}", e);

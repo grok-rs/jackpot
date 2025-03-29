@@ -4,4 +4,3 @@ application:
 rabbitmq:
   uri: "amqp://guest:guest@localhost:5672"
   exchange_name: "gateway"
-  exchange_type: "direct"
