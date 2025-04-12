@@ -4,6 +4,7 @@ use std::{
 };
 use storage::{
     configuration::get_configuration,
+    db::wager_repository::PostgresWagerRepository,
     messaging::{connection::RabbitConnection, consumer_client::ConsumerClient},
     services::{storage::StorageService, storage_processor::TrunsatictionProcessor},
     telemetry::{get_subscriber, init_subscriber},
@@ -16,8 +17,11 @@ async fn main() -> anyhow::Result<()> {
     init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
+    let pool = sqlx::PgPool::connect(&configuration.postgres.build_url()).await?;
+    let pool = Arc::new(pool);
+    let wager_repository = PostgresWagerRepository::new(pool.clone());
 
-    let storage_service = Arc::new(StorageService::new().await?);
+    let storage_service = Arc::new(StorageService::new(wager_repository).await?);
 
     // Set up RabbitMQ connection
     let storage_conn = RabbitConnection::new(&configuration.rabbitmq.uri).await?;

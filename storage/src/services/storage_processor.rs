@@ -12,7 +12,11 @@ pub struct TrunsatictionProcessor {
 impl TrunsatictionProcessor {
     #[instrument(name = "process_wager", skip(self, request), fields(user_id = %request.user_id, amount = request.amount))]
     pub async fn process_wager(&self, request: Wager) -> anyhow::Result<WagerResponse> {
-        tracing::info!("Starting wager processing");
+        tracing::info!("Starting wager processing, {:?}", request);
+        let mut wagers = Vec::new();
+        wagers.push(request);
+
+        self.storage_service.write_transactions(wagers).await?;
 
         let response = WagerResponse {
             wager_id: "aa".to_string(),

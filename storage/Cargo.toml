@@ -15,7 +15,12 @@ serde = { workspace = true }
 serde-aux = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-sqlx = { version = "0.8.3", features = ["postgres", "macros", "runtime-tokio"] }  # Unique to storage
+sqlx = { version = "0.8.3", features = [
+    "postgres",
+    "macros",
+    "runtime-tokio",
+    "uuid",
+] } # Unique to storage
 serde_json = { workspace = true }
 futures = { workspace = true }
 lapin = { workspace = true }

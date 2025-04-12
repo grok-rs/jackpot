@@ -1,12 +1,21 @@
-pub struct StorageService {}
+use crate::{
+    db::{WagerRepository, wager_repository::PostgresWagerRepository},
+    domain::models::Wager,
+};
+use tracing::instrument;
+
+pub struct StorageService {
+    wager_repository: PostgresWagerRepository,
+}
 
 impl StorageService {
-    pub async fn new() -> anyhow::Result<Self> {
-        println!("Creating new StorageService");
-        Ok(Self {})
+    pub async fn new(wager_repository: PostgresWagerRepository) -> anyhow::Result<Self> {
+        Ok(Self { wager_repository })
     }
 
-    pub async fn write_trunsactions(&self) -> anyhow::Result<()> {
+    #[instrument(skip(self, wagers), fields(wager_count = wagers.len()))]
+    pub async fn write_transactions(&self, wagers: Vec<Wager>) -> anyhow::Result<()> {
+        self.wager_repository.insert_wagers(wagers).await?;
         Ok(())
     }
 }
