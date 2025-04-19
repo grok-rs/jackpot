@@ -4,6 +4,7 @@ use engine::{
         connection::RabbitConnection, consumer_client::ConsumerClient,
         publish_client::PublishClient, rpc_client::RpcClient,
     },
+    server,
     services::{jackpot::JackpotService, processor::JackpotProcessor},
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -26,8 +27,10 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(JackpotService::new(&configuration.redis.uri.expose_secret()).await?);
 
     // Set up RabbitMQ connections
-    let gateway_connection = RabbitConnection::new(&configuration.rabbitmq.gateway_url).await?;
-    let storage_connection = RabbitConnection::new(&configuration.rabbitmq.storage_url).await?;
+    let gateway_connection =
+        Arc::new(RabbitConnection::new(&configuration.rabbitmq.gateway_url).await?);
+    let storage_connection =
+        Arc::new(RabbitConnection::new(&configuration.rabbitmq.storage_url).await?);
 
     // Set up Storage RPC client
     let storage_rpc_client =
@@ -54,8 +57,27 @@ async fn main() -> anyhow::Result<()> {
 
     let gateway_consumer = tokio::spawn(async move { consumer_client.start_consuming().await });
 
+    let server_task = tokio::spawn(
+        server::start_server(
+            configuration.application,
+            gateway_connection.clone(),
+            storage_connection.clone(),
+        )
+        .await?,
+    );
+
     tokio::select! {
         o = gateway_consumer => report_exit("Gateway Consumer", o),
+        o = server_task => {
+                    match o {
+                        Ok(()) => tracing::info!("Server has exited"),
+                        Err(e) => tracing::error!(
+                            error.cause_chain = ?e,
+                            error.message = %e,
+                            "Server task failed to complete"
+                        ),
+                    }
+                },
     }
 
     Ok(())

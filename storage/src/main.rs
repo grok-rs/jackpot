@@ -6,6 +6,7 @@ use storage::{
     configuration::get_configuration,
     db::wager_repository::PostgresWagerRepository,
     messaging::{connection::RabbitConnection, consumer_client::ConsumerClient},
+    server,
     services::{storage::StorageService, storage_processor::TrunsatictionProcessor},
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -24,13 +25,13 @@ async fn main() -> anyhow::Result<()> {
     let storage_service = Arc::new(StorageService::new(wager_repository).await?);
 
     // Set up RabbitMQ connection
-    let storage_conn = RabbitConnection::new(&configuration.rabbitmq.uri).await?;
+    let storage_connection = Arc::new(RabbitConnection::new(&configuration.rabbitmq.uri).await?);
 
     let processor = Arc::new(TrunsatictionProcessor { storage_service });
 
     // Set up ConsumerClient
     let consumer_client = ConsumerClient::new(
-        &storage_conn,
+        &storage_connection,
         "storage",
         lapin::ExchangeKind::Direct,
         "storage_queue",
@@ -41,8 +42,27 @@ async fn main() -> anyhow::Result<()> {
 
     let storage_consumer = tokio::spawn(async move { consumer_client.start_consuming().await });
 
+    let server_task = tokio::spawn(
+        server::start_server(
+            configuration.application,
+            storage_connection.clone(),
+            pool.clone(),
+        )
+        .await?,
+    );
+
     tokio::select! {
         o = storage_consumer => report_exit("Storage Consumer", o),
+        o = server_task => {
+                    match o {
+                        Ok(()) => tracing::info!("Server has exited"),
+                        Err(e) => tracing::error!(
+                            error.cause_chain = ?e,
+                            error.message = %e,
+                            "Server task failed to complete"
+                        ),
+                    }
+                },
     }
 
     Ok(())

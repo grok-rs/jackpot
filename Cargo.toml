@@ -1,30 +1,29 @@
 [workspace]
 resolver = "3"
 
-members = [
-    "engine",
-    "gateway",
-    "storage",
-]
+members = ["engine", "gateway", "storage"]
 
 [workspace.dependencies]
 actix-web = "4.10.2"
 anyhow = "1.0.97"
-config = { version = "0.15.9", default-features = false, features = ["yaml"] }
-env_logger = "0.11.7"
+config = { version = "0.15.11", default-features = false, features = ["yaml"] }
+env_logger = "0.11.8"
 futures = "0.3.31"
-lapin = "2.5.1"
+lapin = "2.5.3"
 secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde-aux = "4.6.0"
 serde_json = "1.0.140"
 thiserror = "2.0.12"
-tokio = { version = "1.44.0" }
+tokio = { version = "1.44.2" }
 tracing = "0.1.41"
-tracing-actix-web = "0.7.16"
+tracing-actix-web = "0.7.18"
 tracing-bunyan-formatter = "0.3.10"
 tracing-log = "0.2.0"
-tracing-subscriber = { version = "0.3.19", features = ["registry", "env-filter"] }
-uuid = { version = "1.15.1", features = ["v4", "serde"] }
+tracing-subscriber = { version = "0.3.19", features = [
+    "registry",
+    "env-filter",
+] }
+uuid = { version = "1.16.0", features = ["v4", "serde"] }
 async-trait = "0.1.88"
 url = "2.5.4"

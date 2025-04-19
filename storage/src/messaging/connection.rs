@@ -1,5 +1,5 @@
 use anyhow::Context;
-use lapin::{Connection, ConnectionProperties};
+use lapin::{Connection, ConnectionProperties, ConnectionState};
 use secrecy::{ExposeSecret, SecretString};
 
 pub struct RabbitConnection {
@@ -22,5 +22,9 @@ impl RabbitConnection {
             .create_channel()
             .await
             .context("Failed to create RabbitMQ channel")
+    }
+
+    pub fn is_connected(&self) -> bool {
+        matches!(self.connection.status().state(), ConnectionState::Connected)
     }
 }

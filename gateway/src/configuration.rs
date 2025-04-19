@@ -40,7 +40,7 @@ pub fn get_configuration() -> Result<Config, config::ConfigError> {
             configuration_directory.join(environment_filename),
         ))
         .add_source(
-            config::Environment::with_prefix("ENTRY")
+            config::Environment::with_prefix("GATEWAY")
                 .prefix_separator("_")
                 .separator("__"),
         )

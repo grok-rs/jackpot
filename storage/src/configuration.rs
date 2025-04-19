@@ -1,7 +1,10 @@
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    net::IpAddr,
+};
 use url::Url;
 
 #[derive(Clone, Deserialize)]
@@ -13,7 +16,7 @@ pub struct Settings {
 
 #[derive(Clone, Deserialize)]
 pub struct ApplicationSettings {
-    pub host: String,
+    pub host: IpAddr,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
 }
@@ -80,7 +83,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
             configuration_directory.join(environment_filename),
         ))
         .add_source(
-            config::Environment::with_prefix("TX")
+            config::Environment::with_prefix("STORAGE")
                 .prefix_separator("_")
                 .separator("__"),
         )

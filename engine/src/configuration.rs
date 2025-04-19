@@ -1,7 +1,10 @@
 use secrecy::SecretString;
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    net::Ipv4Addr,
+};
 
 #[derive(Clone, Deserialize)]
 pub struct Settings {
@@ -12,10 +15,9 @@ pub struct Settings {
 
 #[derive(Clone, Deserialize)]
 pub struct ApplicationSettings {
-    pub host: String,
+    pub host: Ipv4Addr,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
-    pub base_url: String,
 }
 
 #[derive(Clone, Deserialize)]

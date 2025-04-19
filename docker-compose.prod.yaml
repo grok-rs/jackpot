@@ -3,7 +3,7 @@ services:
     build:
       context: ./
       dockerfile: gateway/Dockerfile
-      target: dev
+      target: prod
       args:
         SERVICE: gateway
     volumes:
@@ -16,26 +16,20 @@ services:
         condition: service_healthy
     environment:
       - SERVICE=gateway
-      - APP_ENVIRONMENT=development
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
+      - APP_ENVIRONMENT=production
 
   engine:
     build:
       context: ./
       dockerfile: engine/Dockerfile
-      target: dev
+      target: prod
       args:
         SERVICE: engine
     volumes:
       - ./engine/src:/app/engine/src
       - ./engine/configuration:/app/configuration
     ports:
-      - "8081:8080"
+      - "8081:8081"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -43,26 +37,20 @@ services:
         condition: service_healthy
     environment:
       - SERVICE=engine
-      - APP_ENVIRONMENT=development
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
+      - APP_ENVIRONMENT=production
 
   storage:
     build:
       context: ./
       dockerfile: storage/Dockerfile
-      target: dev
+      target: prod
       args:
         SERVICE: storage
     volumes:
       - ./storage/src:/app/storage/src
       - ./storage/configuration:/app/configuration
     ports:
-      - "8082:8080"
+      - "8082:8082"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -70,13 +58,7 @@ services:
         condition: service_healthy
     environment:
       - SERVICE=storage
-      - APP_ENVIRONMENT=development
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
+      - APP_ENVIRONMENT=production
 
   # Dependency services
   rabbitmq:
@@ -85,9 +67,6 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -112,14 +91,10 @@ services:
   postgres:
     image: postgres:17
     container_name: postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: db
     ports:
       - "5432:5432"
     volumes:
-      - jackpot_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 30s
@@ -131,5 +106,5 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  jackpot_postgres_data:
+  postgres_data:
     driver: local
